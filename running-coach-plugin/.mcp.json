@@ -1,0 +1,19 @@
+{
+    "Running Coach Plugin": {
+        "command": "uv",
+        "args": ["run", "--directory", "/path/to/running-coach-plugin", "python", "-m", "running_coach_plugin.server"],
+        "env": {
+            "OPENROUTER_API_KEY": "sk-or-v1-xxxx"
+        }
+    },
+    "Garmin MCP": {
+        "command": "uvx",
+        "args": [
+          "--python",
+          "3.12",
+          "--from",
+          "git+https://github.com/Taxuspt/garmin_mcp",
+          "garmin-mcp"
+        ]
+    }
+}
