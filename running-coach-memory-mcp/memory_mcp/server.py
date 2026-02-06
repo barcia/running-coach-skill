@@ -183,7 +183,7 @@ def list_plans(
     Args:
         start_date: Filter plans from this date (YYYY-MM-DD)
         end_date: Filter plans until this date (YYYY-MM-DD)
-        status: Filter by status (pending, completed, skipped, modified)
+        status: Filter by status (pending, completed, skipped, cancelled)
         limit: Maximum number of plans to return
     """
     conn = get_connection(settings)
@@ -223,9 +223,8 @@ def update_plan(
     planned_at: str | None = None,
     description: str | None = None,
     notes: str | None = None,
-    status: Literal["pending", "completed", "skipped", "modified"] | None = None,
+    status: Literal["pending", "completed", "skipped", "cancelled"] | None = None,
     activity_id: str | None = None,
-    workout_id: str | None = None,
 ) -> Plan | None:
     """Update a plan.
 
@@ -236,7 +235,6 @@ def update_plan(
         notes: New notes (explanation/context)
         status: New status
         activity_id: External activity ID (e.g., Garmin Activity ID)
-        workout_id: External workout ID
     """
     conn = get_connection(settings)
     try:
@@ -246,7 +244,6 @@ def update_plan(
             notes=notes,
             status=status,
             activity_id=activity_id,
-            workout_id=workout_id,
         )
         return plan_tools.update_plan(conn, plan_id, update)
     finally:

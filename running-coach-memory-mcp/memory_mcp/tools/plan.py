@@ -20,7 +20,7 @@ def add_plan(
     conn.commit()
 
     row = conn.execute(
-        "SELECT id, created_at, planned_at, description, notes, status, activity_id, workout_id FROM plan WHERE id = ?",
+        "SELECT id, created_at, planned_at, description, notes, status, activity_id FROM plan WHERE id = ?",
         (cursor.lastrowid,),
     ).fetchone()
 
@@ -32,14 +32,13 @@ def add_plan(
         notes=row["notes"],
         status=row["status"],
         activity_id=row["activity_id"],
-        workout_id=row["workout_id"],
     )
 
 
 def get_plan(conn: sqlite3.Connection, plan_id: int) -> Plan | None:
     """Get a plan by ID."""
     row = conn.execute(
-        "SELECT id, created_at, planned_at, description, notes, status, activity_id, workout_id FROM plan WHERE id = ?",
+        "SELECT id, created_at, planned_at, description, notes, status, activity_id FROM plan WHERE id = ?",
         (plan_id,),
     ).fetchone()
 
@@ -54,7 +53,6 @@ def get_plan(conn: sqlite3.Connection, plan_id: int) -> Plan | None:
         notes=row["notes"],
         status=row["status"],
         activity_id=row["activity_id"],
-        workout_id=row["workout_id"],
     )
 
 
@@ -66,7 +64,7 @@ def list_plans(
     limit: int = 50,
 ) -> list[Plan]:
     """List plans with optional filters."""
-    query = "SELECT id, created_at, planned_at, description, notes, status, activity_id, workout_id FROM plan WHERE 1=1"
+    query = "SELECT id, created_at, planned_at, description, notes, status, activity_id FROM plan WHERE 1=1"
     params: list = []
 
     if start_date:
@@ -95,7 +93,6 @@ def list_plans(
             notes=row["notes"],
             status=row["status"],
             activity_id=row["activity_id"],
-            workout_id=row["workout_id"],
         )
         for row in rows
     ]
@@ -138,10 +135,6 @@ def update_plan(conn: sqlite3.Connection, plan_id: int, update: PlanUpdate) -> P
     if update.activity_id is not None:
         updates.append("activity_id = ?")
         params.append(update.activity_id)
-
-    if update.workout_id is not None:
-        updates.append("workout_id = ?")
-        params.append(update.workout_id)
 
     if not updates:
         return get_plan(conn, plan_id)

@@ -68,9 +68,8 @@ class PlanUpdate(BaseModel):
     planned_at: str | None = None
     description: str | None = None
     notes: str | None = None
-    status: Literal["pending", "completed", "skipped", "modified"] | None = None
+    status: Literal["pending", "completed", "skipped", "cancelled"] | None = None
     activity_id: str | None = None
-    workout_id: str | None = None
 
     @field_validator("planned_at")
     @classmethod
@@ -87,7 +86,6 @@ class Plan(PlanBase):
     created_at: datetime
     status: str
     activity_id: str | None = None
-    workout_id: str | None = None
 
 
 # Status Models

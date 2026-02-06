@@ -16,7 +16,7 @@ def get_athlete_status(conn: sqlite3.Connection) -> AthleteStatus:
     # Last 5 plans before today (any status)
     past_rows = conn.execute(
         """
-        SELECT id, created_at, planned_at, description, notes, status, activity_id, workout_id
+        SELECT id, created_at, planned_at, description, notes, status, activity_id
         FROM plan
         WHERE planned_at < date('now')
         ORDER BY planned_at DESC
@@ -33,7 +33,6 @@ def get_athlete_status(conn: sqlite3.Connection) -> AthleteStatus:
             notes=row["notes"],
             status=row["status"],
             activity_id=row["activity_id"],
-            workout_id=row["workout_id"],
         )
         for row in past_rows
     ]
@@ -41,7 +40,7 @@ def get_athlete_status(conn: sqlite3.Connection) -> AthleteStatus:
     # Next 5 plans from today onwards (any status)
     upcoming_rows = conn.execute(
         """
-        SELECT id, created_at, planned_at, description, notes, status, activity_id, workout_id
+        SELECT id, created_at, planned_at, description, notes, status, activity_id
         FROM plan
         WHERE planned_at >= date('now')
         ORDER BY planned_at ASC
@@ -58,7 +57,6 @@ def get_athlete_status(conn: sqlite3.Connection) -> AthleteStatus:
             notes=row["notes"],
             status=row["status"],
             activity_id=row["activity_id"],
-            workout_id=row["workout_id"],
         )
         for row in upcoming_rows
     ]
