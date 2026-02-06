@@ -1,111 +1,62 @@
 # Running Coach
 
-An AI-powered running coach with persistent memory.
+AI running coach agent with persistent memory.
 
 ## Overview
 
-Running Coach is an AI agent that acts as a professional running and trail coach. The agent is the "brain" of the system: it analyzes your training data, creates personalized plans, and remembers your conversations over time.
+Monorepo con dos componentes:
 
-```mermaid
-flowchart TD
-    Agent[Running Coach Agent]
-    
-    subgraph memory[Memory System]
-        Athlete[ATHLETE.md]
-        MemoryMCP[Running Coach Memory MCP]
-    end
-    
-    subgraph mcps[External MCPs]
-        GarminMCP[Garmin MCP]
-    end
-    
-    subgraph data[Data Sources]
-        Garmin[Garmin Connect]
-    end
-    
-    Agent --> memory
-    Agent --> mcps
-    GarminMCP --> Garmin
-```
-
-### How It Works
-
-- **Agent**: The orchestrator that makes data-driven decisions about your training.
-- **Data Sources**: External platforms that provide real activity data (Garmin Connect today, more platforms coming).
-- **Memory System**: Persistent storage for your athlete profile and semantic memory.
-
-## Components
-
-| Component | Description |
-|-----------|-------------|
-| `agents/running-coach.md` | Agent definition (persona, methodology, tools) |
-| `skills/athlete/` | Skill to manage `ATHLETE.md` (athlete profile) |
-| `skills/garmin/` | Skill for Garmin Connect integration |
-| `skills/running-coach-memory-mcp/` | Skill to interact with the Running Coach Memory MCP |
-| `running-coach-memory-mcp/` | MCP server for memory and training plans |
-
-## Running Coach Memory MCP
-
-The Running Coach Memory MCP is the persistent "brain" of the agent. It provides two key capabilities:
-
-- **Plans**: A training calendar that stores past and future workouts. The agent creates workouts here first, then optionally exports them to external platforms.
-- **Memories**: Semantic memory that stores insights, preferences, and conversational context. Uses vector embeddings for intelligent retrieval, so the agent can recall relevant past conversations.
-
-This enables the agent to maintain context across sessions and never forget what you've discussed.
+- **`running-coach-plugin/`** — Plugin de Running Coach para Claude Desktop. Incluye agents, skills y configuración de MCPs.
+- **`running-coach-memory-mcp/`** — MCP server que gestiona memoria semántica y planes de entrenamiento. Es la pieza clave para que el agente mantenga contexto entre sesiones.
 
 ## Installation
 
-Follow these steps to set up your Running Coach environment:
+### Plugin
 
-### 1. Install Running Coach Memory MCP
+Descarga el `.zip` desde [Releases](https://github.com/ivanbarcia/running-coach-skill/releases) e instálalo en Claude Desktop.
 
-This component manages memory and training plans.
+### Manual
 
-1. Navigate to the memory MCP directory:
-   ```bash
-   cd running-coach-memory-mcp
-   ```
-2. Install dependencies:
-   ```bash
-   uv sync
-   ```
-3. Configure environment variables: Create a `.env` file based on `.env.example` and add your `OPENROUTER_API_KEY`.
-4. Add the server to your MCP configuration (in Cursor or Claude):
-   ```json
-   {
-     "mcpServers": {
-       "Running Coach Memory": {
-         "command": "uv",
-         "args": ["run", "--directory", "/path/to/running-coach-memory-mcp", "python", "-m", "memory_mcp.server"],
-         "env": {
-           "OPENROUTER_API_KEY": "your_api_key_here"
-         }
-       }
-     }
-   }
-   ```
+Si prefieres configurar todo manualmente:
 
-### 2. Configure Garmin MCP Auth
+#### 1. Garmin MCP
 
-To sync your Garmin activities, we use the [Garmin MCP by Taxuspt](https://github.com/Taxuspt/garmin_mcp).
+Instala y autentica el [Garmin MCP](https://github.com/Taxuspt/garmin_mcp):
 
-1. Authenticate with Garmin Connect by running the following command in your terminal:
-   ```bash
-   uvx --python 3.12 --from git+https://github.com/Taxuspt/garmin_mcp garmin-mcp-auth
-   ```
-2. Follow the prompts to enter your email, password, and MFA code if required. This will save your tokens to `~/.garminconnect`.
+```bash
+uvx --python 3.12 --from git+https://github.com/Taxuspt/garmin_mcp garmin-mcp-auth
+```
 
-### 3. Install the Plugin
+Sigue los prompts para email, password y MFA. Los tokens se guardan en `~/.garminconnect`.
 
-Set up the agent plugin in your environment:
+#### 2. Running Coach Memory MCP
 
-1. Review the `running-coach-plugin/.mcp.json` file.
-2. Adjust the paths and settings in your MCP client if necessary to point correctly to the installed components.
+```bash
+cd running-coach-memory-mcp
+uv sync
+```
 
-## Quick Start
+Crea un `.env` a partir de `.env.example` con tu `OPENROUTER_API_KEY`.
 
-1. Once the components are installed, create your `ATHLETE.md` profile (the agent will guide you through the onboarding process).
-2. Start training! The agent will analyze your data and help you plan your sessions.
+Añade el server a tu configuración MCP (Cursor, Claude Desktop, etc.):
+
+```json
+{
+  "mcpServers": {
+    "Running Coach Memory": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/running-coach-memory-mcp", "python", "-m", "memory_mcp.server"],
+      "env": {
+        "OPENROUTER_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+#### 3. Agents y Skills
+
+Copia los agents y skills del repositorio a las rutas correspondientes de tu entorno (`~/.claude/agents/`, `~/.claude/skills/`, etc.).
 
 ## License
 
