@@ -26,7 +26,13 @@ init_database(settings)
 # Create FastMCP server
 mcp = FastMCP(
     "RunningCoachMemory",
-    instructions="Memory and Training Plan MCP for an AI running coach agent. Provides persistent storage for training plans and semantic memory.",
+    instructions=(
+        "Persistent memory and training plan management for an AI running coach. "
+        "Two data domains: Plans (scheduled workouts with status lifecycle: pending → completed/skipped/cancelled) "
+        "and Memory (semantic long-term storage of coaching insights, athlete observations, and decisions). "
+        "Start every session with get_athlete_status(). Use search_memories() before asking the athlete "
+        "something you might already know."
+    ),
 )
 
 
@@ -37,11 +43,11 @@ mcp = FastMCP(
 
 @mcp.tool()
 def get_athlete_status() -> AthleteStatus:
-    """Get aggregated athlete status.
+    """Get a snapshot of the athlete's current training situation.
 
-    Returns a snapshot with past plans, upcoming plans,
-    and recent memories. Use this to understand the athlete's
-    current situation at a glance.
+    Use at the START of every coaching session to load context.
+    Returns: last 5 past plans, next 5 upcoming plans, and 20 most recent memories.
+    This single call replaces multiple queries when you need a quick overview.
     """
     conn = get_connection(settings)
     try:
@@ -60,11 +66,15 @@ def add_memory(
     author: Literal["user", "agent", "system"],
     content: str,
 ) -> Memory:
-    """Add a memory with automatic embedding generation.
+    """Store a coaching insight, observation, or decision for long-term recall.
+
+    Memories are facts worth remembering across sessions: athlete tendencies,
+    injury history, training decisions, or relevant life events.
+    An embedding is generated automatically to enable semantic search later.
 
     Args:
-        author: Who created the memory (user, agent, or system)
-        content: The memory content to store
+        author: "user" = something the athlete said, "agent" = your observation or decision, "system" = automated log
+        content: The insight to remember — be specific and include date context when relevant
     """
     conn = get_connection(settings)
     try:
@@ -75,7 +85,10 @@ def add_memory(
 
 @mcp.tool()
 def get_memory(memory_id: int) -> Memory | None:
-    """Get a memory by ID.
+    """Retrieve a single memory by its ID.
+
+    Use when you already have a memory ID (e.g., from search results or list)
+    and need the full record.
 
     Args:
         memory_id: The ID of the memory to retrieve
@@ -92,11 +105,14 @@ def list_memories(
     author: Literal["user", "agent", "system"] | None = None,
     limit: int = 50,
 ) -> list[Memory]:
-    """List memories with optional author filter.
+    """List memories in reverse chronological order (newest first).
+
+    Use for browsing recent activity or auditing memories by author.
+    For finding memories by topic, prefer search_memories() which uses semantic similarity.
 
     Args:
-        author: Filter by author (user, agent, or system)
-        limit: Maximum number of memories to return
+        author: Filter by author — "user", "agent", or "system". Omit for all.
+        limit: Maximum number of memories to return (default 50)
     """
     conn = get_connection(settings)
     try:
@@ -107,13 +123,16 @@ def list_memories(
 
 @mcp.tool()
 def search_memories(query: str, limit: int = 10) -> list[MemorySearchResult]:
-    """Search memories by semantic similarity.
+    """Find memories by meaning using semantic vector search.
 
-    Uses vector embeddings to find memories similar to the query.
+    This is the PRIMARY way to retrieve memories — use natural language queries
+    (e.g., "knee injury history", "preferred long run day"). Results are ranked
+    by similarity (lower distance = better match). Always search before asking
+    the athlete something you might already know.
 
     Args:
-        query: The search query
-        limit: Maximum number of results to return
+        query: Natural language description of what you're looking for
+        limit: Maximum number of results to return (default 10)
     """
     conn = get_connection(settings)
     try:
@@ -124,7 +143,10 @@ def search_memories(query: str, limit: int = 10) -> list[MemorySearchResult]:
 
 @mcp.tool()
 def delete_memory(memory_id: int) -> bool:
-    """Delete a memory and its embedding.
+    """Permanently delete a memory and its embedding.
+
+    This is irreversible — the memory and its vector embedding are both removed.
+    Use only for incorrect or outdated information that should not appear in future searches.
 
     Args:
         memory_id: The ID of the memory to delete
@@ -143,12 +165,15 @@ def delete_memory(memory_id: int) -> bool:
 
 @mcp.tool()
 def add_plan(planned_at: str, description: str, notes: str | None = None) -> Plan:
-    """Add a training plan entry.
+    """Schedule a training session. Created with status "pending".
+
+    Each plan represents one workout on a specific date. Use when building
+    weekly plans, mesocycles, or scheduling individual sessions.
 
     Args:
-        planned_at: Date in YYYY-MM-DD format
-        description: The workout (clear, concise and direct)
-        notes: The why (explanation, context or justification)
+        planned_at: Target date in YYYY-MM-DD format
+        description: WHAT to do — the workout itself (e.g., "10km easy @ 5:30/km" or "6x1000m @ 4:15 r:2min")
+        notes: WHY this workout — training rationale, phase context, or adaptation goal (optional)
     """
     conn = get_connection(settings)
     try:
@@ -159,7 +184,10 @@ def add_plan(planned_at: str, description: str, notes: str | None = None) -> Pla
 
 @mcp.tool()
 def get_plan(plan_id: int) -> Plan | None:
-    """Get a plan by ID.
+    """Retrieve a single plan by its ID.
+
+    Use when you have a plan ID and need the full record (e.g., to review
+    before updating status or to check details).
 
     Args:
         plan_id: The ID of the plan to retrieve
@@ -178,13 +206,16 @@ def list_plans(
     status: str | None = None,
     limit: int = 50,
 ) -> list[Plan]:
-    """List plans with optional filters.
+    """Query plans with optional date range and status filters. Ordered by date ascending.
+
+    Use for reviewing training blocks, checking compliance (e.g., all "skipped" plans
+    in the last month), or finding plans for a specific date range.
 
     Args:
-        start_date: Filter plans from this date (YYYY-MM-DD)
-        end_date: Filter plans until this date (YYYY-MM-DD)
-        status: Filter by status (pending, completed, skipped, cancelled)
-        limit: Maximum number of plans to return
+        start_date: Include plans from this date onwards (YYYY-MM-DD)
+        end_date: Include plans up to this date (YYYY-MM-DD)
+        status: Filter by status — "pending", "completed", "skipped", or "cancelled"
+        limit: Maximum number of plans to return (default 50)
     """
     conn = get_connection(settings)
     try:
@@ -195,7 +226,11 @@ def list_plans(
 
 @mcp.tool()
 def get_today_plan() -> list[Plan]:
-    """Get plans scheduled for today."""
+    """Get all plans scheduled for today, regardless of status.
+
+    Use when the athlete asks "what's my workout today?" or when giving
+    post-workout feedback to find the planned session for comparison.
+    """
     conn = get_connection(settings)
     try:
         return plan_tools.get_today_plan(conn)
@@ -205,10 +240,13 @@ def get_today_plan() -> list[Plan]:
 
 @mcp.tool()
 def get_upcoming_plans(days: int = 7) -> list[Plan]:
-    """Get plans for the next N days.
+    """Get plans from today through the next N days.
+
+    Use to preview the upcoming training load, check what's scheduled
+    for the week, or review the short-term plan with the athlete.
 
     Args:
-        days: Number of days to look ahead
+        days: Number of days to look ahead from today (default 7)
     """
     conn = get_connection(settings)
     try:
@@ -226,15 +264,21 @@ def update_plan(
     status: Literal["pending", "completed", "skipped", "cancelled"] | None = None,
     activity_id: str | None = None,
 ) -> Plan | None:
-    """Update a plan.
+    """Update a plan's fields. Key tool for closing the training feedback loop.
+
+    Status lifecycle: pending → completed | skipped | cancelled.
+    After a workout, mark "completed" and link the Garmin activity_id.
+    Mark "skipped" if the athlete didn't do it (record why in notes).
+    Mark "cancelled" if the session is removed from the plan entirely.
+    Only pass the fields you want to change — others remain unchanged.
 
     Args:
         plan_id: The ID of the plan to update
-        planned_at: New date (YYYY-MM-DD)
-        description: New workout description
-        notes: New notes (explanation/context)
-        status: New status
-        activity_id: External activity ID (e.g., Garmin Activity ID)
+        planned_at: Reschedule to a new date (YYYY-MM-DD)
+        description: Updated workout description
+        notes: Updated rationale or post-workout observations
+        status: New status — "pending", "completed", "skipped", or "cancelled"
+        activity_id: Garmin activity ID to link (set when marking completed)
     """
     conn = get_connection(settings)
     try:
@@ -252,7 +296,11 @@ def update_plan(
 
 @mcp.tool()
 def delete_plan(plan_id: int) -> bool:
-    """Delete a plan.
+    """Permanently delete a plan record.
+
+    This hard-deletes the plan from the database. To keep a record that a session
+    was intentionally removed, prefer update_plan(status="cancelled") instead.
+    Use delete only for plans created by mistake.
 
     Args:
         plan_id: The ID of the plan to delete
