@@ -30,25 +30,104 @@ Script genera JSON → mcp__Garmin_MCP__upload_workout → workoutId → mcp__Ga
 ```
 
 ### Carrera Simple
+
+**Con zona de ritmo:**
 ```bash
 python ~/.claude/skills/garmin/scripts/simple-run.py \
   --title "Easy Run" \
+  --notes "Carrera fácil 30min en zona 2 de ritmo" \
+  --duration 30 \
+  --duration-type time \
+  --target pace \
+  --target-value 2
+```
+
+**Con ritmo personalizado (min/km):**
+```bash
+python ~/.claude/skills/garmin/scripts/simple-run.py \
+  --title "Rodaje 7km" \
+  --notes "Rodaje suave a ritmo 5:30-6:00" \
+  --duration 7 \
+  --duration-type distance \
+  --target pace \
+  --pace-from 5.50 \
+  --pace-to 6.00
+```
+
+**Con FC personalizada (bpm):**
+```bash
+python ~/.claude/skills/garmin/scripts/simple-run.py \
+  --title "Rodaje aeróbico" \
+  --notes "Rodaje aeróbico manteniendo FC entre 135-150 bpm" \
+  --duration 40 \
+  --duration-type time \
+  --target hr \
+  --hr-from 135 \
+  --hr-to 150
+```
+
+**Sin objetivo:**
+```bash
+python ~/.claude/skills/garmin/scripts/simple-run.py \
+  --title "Easy Run" \
+  --notes "Carrera fácil sin objetivo específico" \
   --duration 30 \
   --duration-type time
 ```
+
 Opciones `--duration-type`: `time` (minutos) | `distance` (km)
+Opciones `--target`: `none` | `hr` | `pace`
 
 ### Intervalos
+
+**Con ritmo personalizado por fase:**
 ```bash
 python ~/.claude/skills/garmin/scripts/interval-run.py \
-  --title "6x1min" \
+  --title "3x5min ritmo" \
+  --notes "Series de 5min a ritmo medio con recuperación activa" \
+  --reps 3 \
+  --warmup-duration 15 \
+  --warmup-target pace --warmup-pace-from 6.00 --warmup-pace-to 6.50 \
+  --interval-duration 5 --interval-type time \
+  --interval-target pace --interval-pace-from 4.83 --interval-pace-to 5.17 \
+  --recovery-duration 3 \
+  --recovery-target pace --recovery-pace-from 6.00 --recovery-pace-to 6.50 \
+  --cooldown-duration 10 \
+  --cooldown-target pace --cooldown-pace-from 6.00 --cooldown-pace-to 6.50
+```
+
+**Con zona HR:**
+```bash
+python ~/.claude/skills/garmin/scripts/interval-run.py \
+  --title "6x1min Z4" \
+  --notes "Series cortas en zona 4 de FC para mejorar VO2max" \
   --warmup-duration 10 \
   --reps 6 \
-  --interval-duration 1 \
-  --interval-type time \
+  --interval-duration 1 --interval-type time \
+  --interval-target hr --interval-target-value 4 \
   --recovery-duration 1 \
   --cooldown-duration 5
 ```
+
+**Con FC personalizada (bpm):**
+```bash
+python ~/.claude/skills/garmin/scripts/interval-run.py \
+  --title "3x5min HR 155-170" \
+  --notes "Series de 5min a FC 155-170 con recuperación activa a 120-140" \
+  --reps 3 \
+  --warmup-duration 10 \
+  --interval-duration 5 --interval-type time \
+  --interval-target hr --interval-hr-from 155 --interval-hr-to 170 \
+  --recovery-duration 3 \
+  --recovery-target hr --recovery-hr-from 120 --recovery-hr-to 140 \
+  --cooldown-duration 10
+```
+
+**Opciones de target por fase** (warmup, interval, recovery, cooldown):
+- `--{fase}-target`: `none` | `hr` | `pace`
+- `--{fase}-target-value`: zona 1-5 (para `hr` o `pace` zone)
+- `--{fase}-pace-from` / `--{fase}-pace-to`: rango en min/km (para `pace` personalizado)
+- `--{fase}-hr-from` / `--{fase}-hr-to`: rango en bpm (para `hr` personalizada)
 
 ### Subir y Programar
 ```python
@@ -110,6 +189,6 @@ mcp__Garmin_MCP__add_body_composition(
 
 | Archivo | Contenido |
 |---------|-----------|
-| `references/workouts.md` | Schema workouts, steps, valores, scheduling |
+| `references/workouts.md` | Schema workouts, steps, target types, ritmo personalizado, scheduling |
 | `references/fit.md` | Protocolo FIT, escalas, physique rating table |
 | `references/eufy-to-garmin.md` | Guía de exportación Eufy y mapeo de campos |
