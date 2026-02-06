@@ -13,7 +13,7 @@ Monorepo con dos componentes:
 
 ### Plugin
 
-Descarga el `.zip` desde [Releases](https://github.com/ivanbarcia/running-coach-skill/releases) e instálalo en Claude Desktop.
+Descarga el `.zip` desde [Releases](https://github.com/barcia/running-coach-skill/releases) e instálalo en Claude Desktop.
 
 ### Manual
 
