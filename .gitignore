@@ -46,3 +46,6 @@ htmlcov/
 # UV
 .uv/
 uv.lock
+
+# MacOS
+.DS_Store

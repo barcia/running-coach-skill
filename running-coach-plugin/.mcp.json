@@ -1,7 +1,7 @@
 {
-    "Running Coach Plugin": {
+    "Running Coach Memory": {
         "command": "uv",
-        "args": ["run", "--directory", "/path/to/running-coach-plugin", "python", "-m", "running_coach_plugin.server"],
+        "args": ["run", "--directory", "~/.local/opt/running-coach-memory-mcp", "python", "-m", "memory_mcp.server"],
         "env": {
             "OPENROUTER_API_KEY": "sk-or-v1-xxxx"
         }
