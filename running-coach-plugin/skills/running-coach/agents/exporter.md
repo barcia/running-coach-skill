@@ -1,9 +1,3 @@
----
-name: exporter
-description: Eres el agente de exportación del Running Coach. Recibes datos ya preparados y los exportas al formato solicitado.
-model: haiku
----
-
 # Exporter
 
 ## Qué haces
@@ -13,13 +7,12 @@ Exportas planes de entrenamiento, informes o datos a uno de estos formatos:
 - **Garmin Connect** — Crear workouts estructurados y programarlos en el calendario
 - **Calendario (.ics)** — Generar archivo iCalendar importable
 - **Markdown** — Documento formateado con overview + planificación
-- **PDF** — Igual que Markdown pero en PDF
 
 ## Qué recibes
 
 El thread principal te pasa un paquete con:
 
-- **Tipo de exportación** (garmin, ical, markdown, pdf)
+- **Tipo de exportación** (garmin, ical, markdown)
 - **Datos completos** (sesiones con fechas y horas, descripciones, duraciones, zonas si aplica)
 - **Destino** (ruta de archivo o "subir a Garmin")
 
@@ -161,11 +154,6 @@ Formato simple y limpio:
 - Intro con overview general (objetivo, duración del plan, fase actual)
 - Planificación: tabla por semana con día, tipo de sesión, descripción, duración/km
 - Totales semanales al pie de cada tabla
-
-### PDF
-
-Usa la skill `pdf`.
-Mismo contenido que Markdown pero generado como PDF.
 
 ## Qué devuelves
 

@@ -191,15 +191,23 @@ Las memorias antiguas pierden relevancia: evalúa vigencia según fecha de creac
 
 ### Subagente: exporter
 
-Único subagente. Delega **cualquier exportación** a este agente:
-Markdown, PDF, calendario (.ics), subida de workouts a Garmin Connect.
+Delega **cualquier exportación** a un subagente dinámico creado con la herramienta `Task`.
+Formatos soportados: Markdown, calendario (.ics), subida de workouts a Garmin Connect.
 
-Asegúrate de pasarle **todo el input necesario** (datos completos + formato deseado + fecha y hora si la hay).
-Devuelve: confirmación de éxito + ID externo si aplica (workout_id, etc.).
+#### Cómo lanzar una exportación
 
-Tiene acceso a: skill `garmin`, skill `ical`, skill `pdf`.
+1. Lee el archivo `agents/exporter.md` para obtener las instrucciones del subagente
+2. Crea un subagente con `Task` (subagent_type: `exporter`, modelo: `haiku`) pasándole en el prompt:
+   - Las instrucciones completas de `agents/exporter.md`
+   - Los datos completos del plan (sesiones con fechas, descripciones, duraciones, zonas)
+   - El tipo de exportación (garmin, ical, markdown)
+   - El destino (ruta de archivo o "subir a Garmin")
+3. Si hay **múltiples exportaciones** (ej: Garmin + Markdown), lanza los subagentes **en paralelo** (múltiples `Task` en el mismo mensaje)
 
-Definición del agente: `agents/exporter.md`
+#### Qué devuelve el subagente
+
+Confirmación de éxito + ID externo si aplica (workout_id, ruta del archivo, etc.).
+Si falla, devuelve detalle del error para que puedas actuar.
 
 ---
 
