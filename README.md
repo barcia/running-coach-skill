@@ -6,8 +6,8 @@ AI running coach agent with persistent memory.
 
 Monorepo con dos componentes:
 
-- **`running-coach-plugin/`** — Plugin de Running Coach para Claude Desktop. Incluye agents, skills y configuración de MCPs.
-- **`running-coach-memory-mcp/`** — MCP server que gestiona memoria semántica y planes de entrenamiento. Es la pieza clave para que el agente mantenga contexto entre sesiones.
+- `**running-coach-plugin/**` — Plugin de Running Coach para Claude Desktop. Incluye agents, skills y configuración de MCPs.
+- `**running-coach-memory-mcp/**` — MCP server que gestiona memoria semántica y planes de entrenamiento. Es la pieza clave para que el agente mantenga contexto entre sesiones.
 
 ## Installation
 
@@ -54,9 +54,9 @@ Añade el server a tu configuración MCP (Cursor, Claude Desktop, etc.):
 }
 ```
 
-#### 3. Agents y Skills
+#### 3. Skills
 
-Copia los agents y skills del repositorio a las rutas correspondientes de tu entorno (`~/.claude/agents/`, `~/.claude/skills/`, etc.).
+Copia los Skills del repositorio a las rutas correspondientes de tu entorno (`~/.claude/skills/`).
 
 ## License
 
