@@ -318,8 +318,19 @@ def delete_plan(plan_id: int) -> bool:
 
 
 def main():
-    """Run the MCP server."""
-    mcp.run(transport="stdio")
+    """Run the MCP server.
+
+    Transport is controlled by MCP_TRANSPORT env var:
+      - "stdio" (default): for local use via Claude Desktop
+      - "streamable-http": for remote use via HTTP (e.g., from a VPS)
+
+    When using streamable-http, also configure MCP_HOST and MCP_PORT.
+    """
+    mcp.run(
+        transport=settings.mcp_transport,
+        host=settings.mcp_host,
+        port=settings.mcp_port,
+    )
 
 
 if __name__ == "__main__":

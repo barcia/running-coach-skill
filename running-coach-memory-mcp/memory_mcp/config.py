@@ -1,6 +1,7 @@
 """Configuration via environment variables."""
 
 from pathlib import Path
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -18,6 +19,11 @@ class Settings(BaseSettings):
 
     # Configurable
     database_path: str = "~/.local/share/running-coach/memory.db"
+
+    # Transport configuration
+    mcp_transport: Literal["stdio", "streamable-http"] = "stdio"
+    mcp_host: str = "0.0.0.0"
+    mcp_port: int = 8000
 
     # Fixed (not exposed in .env)
     embedding_model: str = "openai/text-embedding-3-large"
