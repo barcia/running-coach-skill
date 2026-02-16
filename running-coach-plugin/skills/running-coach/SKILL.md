@@ -36,7 +36,7 @@ Tu **Single Source of Truth** con información estructural que cambia poco:
 - Momentum (fase del macrociclo, foco semanal, sensaciones recientes)
 
 Template: `assets/template-ATHLETE.md`
-Mantén este archivo **siempre completo y actualizado**.
+Mantén este archivo **siempre completo y actualizado**. Si hace más de una semana que se ha actualizado obtén nueva información para ponerlo al día.
 
 ### running-coach-memory MCP — Memoria operativa
 
@@ -46,6 +46,7 @@ Base de datos SQLite accesible vía MCP con dos tablas:
 - Observaciones sobre el atleta ("Tendencia a salir rápido en series")
 - Eventos relevantes ("Lesión sóleo dic-2025, recuperó bien")
 - Decisiones tomadas ("Actualizado objetivo: se apuntó a X carrera")
+- Guarda solo insights o notas que puedan ser relevantes en el futuro
 
 **Plans** — Fuente de verdad de planificación:
 - `planned_at`: Fecha prevista de ejecución
@@ -65,7 +66,7 @@ Conexión directa a Garmin Connect para métricas deportivas, salud, y subida de
 
 Cada dato tiene **un solo sitio**:
 - **ATHLETE.md** → Información core y status (lo que define al atleta)
-- **Memory** → Logs e insights (lo que conviene recordar en el futuro)
+- **Memory** → Logs e insights (lo que conviene recordar o que puede ser útil en el futuro)
 - **Plans** → Planificación de sesiones (qué y cuándo)
 
 Después de cada interacción relevante, evalúa si hay algo que guardar o actualizar.
@@ -99,7 +100,7 @@ su flujo de resolución completo — no hay secciones separadas de workflows.
 ### Analizar estado
 **Triggers:** cómo voy, mi fitness, estado, revisar semana, carga, recuperación
 
-1. `get_athlete_status()` → carga actual, última actividad
+1. `get_athlete_status()` → Devuelve los 5 planes anteriores, los 5 siguientes y los últimos 20 registros de memory
 2. Si Garmin: `get_training_status()` + `get_hrv_data()` → VO2max, carga, recuperación
 3. `search_memories(query="tendencias últimas semanas")` → contexto histórico
 4. Consultar `references/methodology.md` §4-§5 para interpretar carga y recuperación
@@ -117,7 +118,10 @@ su flujo de resolución completo — no hay secciones separadas de workflows.
    - Distribuir sesiones según disponibilidad
    - Calcular volumen/intensidad apropiados
    - `add_plan()` para cada sesión
-5. Ofrecer exportar → delegar a subagente `exporter` (ver sección 4)
+5. Ofrecer exportar:
+   - **Garmin Connect** → usar skill `garmin` para crear y programar workouts estructurados
+   - **Calendario (.ics)** → usar skill `ical` para generar archivo iCalendar importable
+   - **Markdown** → generar documento directamente con overview + planificación por semana
 
 ### Feedback post-entreno
 **Triggers:** acabo de, qué tal, última actividad, analiza, cómo ha ido
@@ -127,7 +131,7 @@ su flujo de resolución completo — no hay secciones separadas de workflows.
 3. Comparar: ¿cumplió objetivo? ¿desviaciones significativas? Contexto (clima, terreno)
 4. Analizar: FC promedio vs zonas target, splits, desnivel si trail
 5. Feedback: aspectos positivos + aspectos a mejorar + estimación fatiga/recuperación
-6. `update_plan(status="completed", activity_id, notes)` + `add_memory()` si hay insight
+6. `update_plan(status="completed", activity_id, notes)` + `add_memory()` si hay insight relevante
 
 ### Tips y consultas
 **Triggers:** por qué, cómo mejorar, nutrición, técnica, equipamiento, fisiología, consejo
@@ -144,7 +148,7 @@ su flujo de resolución completo — no hay secciones separadas de workflows.
 
 1. Leer ATHLETE.md actual
 2. Identificar qué cambió y en qué sección
-3. Actualizar el archivo
+3. Actualizar el archivo ATHLETE.md si corresponde y es algo core
 4. `add_memory(content="Actualización: [descripción del cambio]")` → registro
 5. Evaluar si el cambio afecta planes existentes → recomendar ajuste si necesario
 
@@ -189,25 +193,15 @@ Autores: `user` (lo que dijo el atleta), `agent` (tus observaciones), `system` (
 Busca antes de preguntar — usa `search_memories` proactivamente antes de pedir información.
 Las memorias antiguas pierden relevancia: evalúa vigencia según fecha de creación.
 
-### Subagente: exporter
+### Exportación de planes
 
-Delega **cualquier exportación** a un subagente dinámico creado con la herramienta `Task`.
-Formatos soportados: Markdown, calendario (.ics), subida de workouts a Garmin Connect.
+Para exportar planes de entrenamiento, usa las skills especializadas:
 
-#### Cómo lanzar una exportación
+- **Garmin Connect** — Skill `garmin`: crear workouts estructurados y programarlos en el calendario Garmin
+- **Calendario (.ics)** — Skill `ical`: generar archivo iCalendar importable en Apple Calendar, Google Calendar, etc.
+- **Markdown** — Generar directamente un documento con overview general + planificación por semana con tablas
 
-1. Lee el archivo `agents/exporter.md` para obtener las instrucciones del subagente
-2. Crea un subagente con `Task` (subagent_type: `exporter`, modelo: `haiku`) pasándole en el prompt:
-   - Las instrucciones completas de `agents/exporter.md`
-   - Los datos completos del plan (sesiones con fechas, descripciones, duraciones, zonas)
-   - El tipo de exportación (garmin, ical, markdown)
-   - El destino (ruta de archivo o "subir a Garmin")
-3. Si hay **múltiples exportaciones** (ej: Garmin + Markdown), lanza los subagentes **en paralelo** (múltiples `Task` en el mismo mensaje)
-
-#### Qué devuelve el subagente
-
-Confirmación de éxito + ID externo si aplica (workout_id, ruta del archivo, etc.).
-Si falla, devuelve detalle del error para que puedas actuar.
+Si el atleta pide múltiples formatos, ejecuta cada exportación por separado.
 
 ---
 
