@@ -1,11 +1,12 @@
 """Status tool for aggregated athlete situation report."""
 
-import sqlite3
+from typing import Any
 
+from memory_mcp.database import query_all
 from memory_mcp.models import AthleteStatus, Memory, Plan
 
 
-def get_athlete_status(conn: sqlite3.Connection) -> AthleteStatus:
+def get_athlete_status(conn: Any) -> AthleteStatus:
     """Get aggregated athlete status.
 
     Returns:
@@ -14,7 +15,8 @@ def get_athlete_status(conn: sqlite3.Connection) -> AthleteStatus:
     - recent_memories: Last 20 memories
     """
     # Last 5 plans before today (any status)
-    past_rows = conn.execute(
+    past_rows = query_all(
+        conn,
         """
         SELECT id, created_at, planned_at, description, notes, status, activity_id
         FROM plan
@@ -22,7 +24,7 @@ def get_athlete_status(conn: sqlite3.Connection) -> AthleteStatus:
         ORDER BY planned_at DESC
         LIMIT 5
         """,
-    ).fetchall()
+    )
 
     past_plans = [
         Plan(
@@ -38,7 +40,8 @@ def get_athlete_status(conn: sqlite3.Connection) -> AthleteStatus:
     ]
 
     # Next 5 plans from today onwards (any status)
-    upcoming_rows = conn.execute(
+    upcoming_rows = query_all(
+        conn,
         """
         SELECT id, created_at, planned_at, description, notes, status, activity_id
         FROM plan
@@ -46,7 +49,7 @@ def get_athlete_status(conn: sqlite3.Connection) -> AthleteStatus:
         ORDER BY planned_at ASC
         LIMIT 5
         """,
-    ).fetchall()
+    )
 
     upcoming_plans = [
         Plan(
@@ -62,14 +65,15 @@ def get_athlete_status(conn: sqlite3.Connection) -> AthleteStatus:
     ]
 
     # Last 20 memories
-    memory_rows = conn.execute(
+    memory_rows = query_all(
+        conn,
         """
         SELECT id, created_at, author, content
         FROM memory
         ORDER BY id DESC
         LIMIT 20
         """,
-    ).fetchall()
+    )
 
     recent_memories = [
         Memory(

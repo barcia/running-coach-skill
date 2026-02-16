@@ -1,9 +1,9 @@
-"""SQLite database with sqlite-vec for vector search."""
+"""Turso (libSQL) database with native vector search."""
 
-import sqlite3
 from pathlib import Path
+from typing import Any
 
-import sqlite_vec
+import libsql
 
 from memory_mcp.config import Settings
 
@@ -14,44 +14,61 @@ def get_schema_sql() -> str:
     return schema_path.read_text()
 
 
-def init_database(settings: Settings) -> sqlite3.Connection:
-    """Initialize database with schema and sqlite-vec extension."""
-    db_path = settings.db_path
-    db_path.parent.mkdir(parents=True, exist_ok=True)
+def _execute_schema(conn: Any, schema_sql: str) -> None:
+    """Execute schema SQL statements individually.
 
-    conn = sqlite3.connect(str(db_path))
-    conn.row_factory = sqlite3.Row
+    libsql does not support executescript(), so we split on semicolons
+    and execute each statement separately.
+    """
+    for statement in schema_sql.split(";"):
+        statement = statement.strip()
+        if statement:
+            conn.execute(statement)
 
-    # Load sqlite-vec extension
-    conn.enable_load_extension(True)
-    sqlite_vec.load(conn)
-    conn.enable_load_extension(False)
 
-    # Apply schema
-    conn.executescript(get_schema_sql())
+def init_database(settings: Settings) -> Any:
+    """Initialize database with schema."""
+    url = settings.turso_database_url
 
-    # Create vector table for memory embeddings
-    # Check if table exists first
-    cursor = conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='memory_vec'"
-    )
-    if cursor.fetchone() is None:
-        conn.execute(
-            f"CREATE VIRTUAL TABLE memory_vec USING vec0(embedding float[{settings.embedding_dimensions}])"
-        )
+    # Create parent directory for local file databases
+    if not url.startswith(("libsql://", "http")):
+        db_path = Path(url).expanduser()
+        db_path.parent.mkdir(parents=True, exist_ok=True)
 
+    conn = get_connection(settings)
+    _execute_schema(conn, get_schema_sql())
     conn.commit()
     return conn
 
 
-def get_connection(settings: Settings) -> sqlite3.Connection:
+def get_connection(settings: Settings) -> Any:
     """Get database connection."""
-    conn = sqlite3.connect(str(settings.db_path))
-    conn.row_factory = sqlite3.Row
+    url = settings.turso_database_url
 
-    # Load sqlite-vec extension
-    conn.enable_load_extension(True)
-    sqlite_vec.load(conn)
-    conn.enable_load_extension(False)
+    # Expand user path for local file databases
+    if not url.startswith(("libsql://", "http")):
+        url = str(Path(url).expanduser())
 
-    return conn
+    if settings.turso_auth_token:
+        return libsql.connect(url, auth_token=settings.turso_auth_token)
+    return libsql.connect(url)
+
+
+def query_one(conn: Any, sql: str, params: tuple = ()) -> dict | None:
+    """Execute query and return single row as dict."""
+    cursor = conn.execute(sql, params)
+    row = cursor.fetchone()
+    if row is None:
+        return None
+    columns = [d[0] for d in cursor.description]
+    return dict(zip(columns, row))
+
+
+def query_all(conn: Any, sql: str, params: tuple = ()) -> list[dict]:
+    """Execute query and return all rows as dicts."""
+    cursor = conn.execute(sql, params)
+    rows = cursor.fetchall()
+    if not rows:
+        return []
+    columns = [d[0] for d in cursor.description]
+    return [dict(zip(columns, row)) for row in rows]

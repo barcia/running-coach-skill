@@ -1,44 +1,40 @@
 """Memory tools with semantic search."""
 
-import sqlite3
-from typing import Literal
+import json
+from typing import Any, Literal
 
 from memory_mcp.config import Settings
-from memory_mcp.embeddings import create_embedding, get_embedding_client, serialize_embedding
+from memory_mcp.database import query_all, query_one
+from memory_mcp.embeddings import create_embedding, get_embedding_client
 from memory_mcp.models import Memory, MemorySearchResult
 
 
 def add_memory(
-    conn: sqlite3.Connection,
+    conn: Any,
     settings: Settings,
     author: Literal["user", "agent", "system"],
     content: str,
 ) -> Memory:
     """Add a memory with automatic embedding generation."""
-    # Insert memory
-    cursor = conn.execute(
-        "INSERT INTO memory (author, content) VALUES (?, ?)",
-        (author, content),
-    )
-    memory_id = cursor.lastrowid
-
-    # Generate and store embedding
+    # Generate embedding
     client = get_embedding_client(settings)
     embedding = create_embedding(client, content, settings.embedding_model)
-    embedding_bytes = serialize_embedding(embedding)
+    embedding_json = json.dumps(embedding)
 
-    conn.execute(
-        "INSERT INTO memory_vec (rowid, embedding) VALUES (?, ?)",
-        (memory_id, embedding_bytes),
+    # Insert memory with embedding in one statement
+    cursor = conn.execute(
+        "INSERT INTO memory (author, content, embedding) VALUES (?, ?, vector32(?))",
+        (author, content, embedding_json),
     )
-
+    memory_id = cursor.lastrowid
     conn.commit()
 
     # Return created memory
-    row = conn.execute(
+    row = query_one(
+        conn,
         "SELECT id, created_at, author, content FROM memory WHERE id = ?",
         (memory_id,),
-    ).fetchone()
+    )
 
     return Memory(
         id=row["id"],
@@ -48,12 +44,13 @@ def add_memory(
     )
 
 
-def get_memory(conn: sqlite3.Connection, memory_id: int) -> Memory | None:
+def get_memory(conn: Any, memory_id: int) -> Memory | None:
     """Get a memory by ID."""
-    row = conn.execute(
+    row = query_one(
+        conn,
         "SELECT id, created_at, author, content FROM memory WHERE id = ?",
         (memory_id,),
-    ).fetchone()
+    )
 
     if row is None:
         return None
@@ -67,21 +64,23 @@ def get_memory(conn: sqlite3.Connection, memory_id: int) -> Memory | None:
 
 
 def list_memories(
-    conn: sqlite3.Connection,
+    conn: Any,
     author: Literal["user", "agent", "system"] | None = None,
     limit: int = 50,
 ) -> list[Memory]:
     """List memories with optional author filter."""
     if author:
-        rows = conn.execute(
+        rows = query_all(
+            conn,
             "SELECT id, created_at, author, content FROM memory WHERE author = ? ORDER BY created_at DESC LIMIT ?",
             (author, limit),
-        ).fetchall()
+        )
     else:
-        rows = conn.execute(
+        rows = query_all(
+            conn,
             "SELECT id, created_at, author, content FROM memory ORDER BY created_at DESC LIMIT ?",
             (limit,),
-        ).fetchall()
+        )
 
     return [
         Memory(
@@ -95,33 +94,34 @@ def list_memories(
 
 
 def search_memories(
-    conn: sqlite3.Connection,
+    conn: Any,
     settings: Settings,
     query: str,
     limit: int = 10,
 ) -> list[MemorySearchResult]:
-    """Search memories by semantic similarity."""
+    """Search memories by semantic similarity using native libSQL vector search."""
     # Generate query embedding
     client = get_embedding_client(settings)
     query_embedding = create_embedding(client, query, settings.embedding_model)
-    query_bytes = serialize_embedding(query_embedding)
+    query_json = json.dumps(query_embedding)
 
-    # Vector search with sqlite-vec KNN syntax
-    rows = conn.execute(
+    # Native vector search with cosine distance
+    rows = query_all(
+        conn,
         """
         SELECT
-            m.id,
-            m.created_at,
-            m.author,
-            m.content,
-            v.distance
-        FROM memory_vec v
-        JOIN memory m ON m.id = v.rowid
-        WHERE v.embedding MATCH ? AND k = ?
-        ORDER BY v.distance
+            id,
+            created_at,
+            author,
+            content,
+            vector_distance_cos(embedding, vector32(?)) AS distance
+        FROM memory
+        WHERE embedding IS NOT NULL
+        ORDER BY distance
+        LIMIT ?
         """,
-        (query_bytes, limit),
-    ).fetchall()
+        (query_json, limit),
+    )
 
     return [
         MemorySearchResult(
@@ -135,22 +135,8 @@ def search_memories(
     ]
 
 
-def delete_memory(conn: sqlite3.Connection, memory_id: int) -> bool:
-    """Delete a memory and its embedding.
-
-    Uses explicit transaction to ensure both memory and embedding
-    are deleted atomically.
-    """
-    cursor = conn.cursor()
-    try:
-        cursor.execute("BEGIN TRANSACTION")
-        # Delete from memory table first (primary record)
-        cursor.execute("DELETE FROM memory WHERE id = ?", (memory_id,))
-        deleted = cursor.rowcount > 0
-        # Delete from vector table (secondary record)
-        cursor.execute("DELETE FROM memory_vec WHERE rowid = ?", (memory_id,))
-        cursor.execute("COMMIT")
-        return deleted
-    except Exception:
-        cursor.execute("ROLLBACK")
-        raise
+def delete_memory(conn: Any, memory_id: int) -> bool:
+    """Delete a memory and its embedding."""
+    cursor = conn.execute("DELETE FROM memory WHERE id = ?", (memory_id,))
+    conn.commit()
+    return cursor.rowcount > 0

@@ -1,13 +1,14 @@
 """Plan tools for training schedule management."""
 
-import sqlite3
 from datetime import date, timedelta
+from typing import Any
 
+from memory_mcp.database import query_all, query_one
 from memory_mcp.models import Plan, PlanUpdate
 
 
 def add_plan(
-    conn: sqlite3.Connection,
+    conn: Any,
     planned_at: str,
     description: str,
     notes: str | None = None,
@@ -19,10 +20,11 @@ def add_plan(
     )
     conn.commit()
 
-    row = conn.execute(
+    row = query_one(
+        conn,
         "SELECT id, created_at, planned_at, description, notes, status, activity_id FROM plan WHERE id = ?",
         (cursor.lastrowid,),
-    ).fetchone()
+    )
 
     return Plan(
         id=row["id"],
@@ -35,12 +37,13 @@ def add_plan(
     )
 
 
-def get_plan(conn: sqlite3.Connection, plan_id: int) -> Plan | None:
+def get_plan(conn: Any, plan_id: int) -> Plan | None:
     """Get a plan by ID."""
-    row = conn.execute(
+    row = query_one(
+        conn,
         "SELECT id, created_at, planned_at, description, notes, status, activity_id FROM plan WHERE id = ?",
         (plan_id,),
-    ).fetchone()
+    )
 
     if row is None:
         return None
@@ -57,7 +60,7 @@ def get_plan(conn: sqlite3.Connection, plan_id: int) -> Plan | None:
 
 
 def list_plans(
-    conn: sqlite3.Connection,
+    conn: Any,
     start_date: str | None = None,
     end_date: str | None = None,
     status: str | None = None,
@@ -82,7 +85,7 @@ def list_plans(
     query += " ORDER BY planned_at ASC LIMIT ?"
     params.append(limit)
 
-    rows = conn.execute(query, params).fetchall()
+    rows = query_all(conn, query, tuple(params))
 
     return [
         Plan(
@@ -98,20 +101,20 @@ def list_plans(
     ]
 
 
-def get_today_plan(conn: sqlite3.Connection) -> list[Plan]:
+def get_today_plan(conn: Any) -> list[Plan]:
     """Get plans for today."""
     today = date.today().isoformat()
     return list_plans(conn, start_date=today, end_date=today)
 
 
-def get_upcoming_plans(conn: sqlite3.Connection, days: int = 7) -> list[Plan]:
+def get_upcoming_plans(conn: Any, days: int = 7) -> list[Plan]:
     """Get plans for the next N days."""
     today = date.today()
     end = today + timedelta(days=days)
     return list_plans(conn, start_date=today.isoformat(), end_date=end.isoformat())
 
 
-def update_plan(conn: sqlite3.Connection, plan_id: int, update: PlanUpdate) -> Plan | None:
+def update_plan(conn: Any, plan_id: int, update: PlanUpdate) -> Plan | None:
     """Update a plan."""
     updates: list[str] = []
     params: list = []
@@ -148,7 +151,7 @@ def update_plan(conn: sqlite3.Connection, plan_id: int, update: PlanUpdate) -> P
     return get_plan(conn, plan_id)
 
 
-def delete_plan(conn: sqlite3.Connection, plan_id: int) -> bool:
+def delete_plan(conn: Any, plan_id: int) -> bool:
     """Delete a plan."""
     cursor = conn.execute("DELETE FROM plan WHERE id = ?", (plan_id,))
     conn.commit()

@@ -17,8 +17,9 @@ class Settings(BaseSettings):
     # Required
     openrouter_api_key: str
 
-    # Configurable
-    database_path: str = "~/.local/share/running-coach/memory.db"
+    # Turso database
+    turso_database_url: str  # libsql://your-db.turso.io or local file path
+    turso_auth_token: str = ""  # Required for remote Turso, empty for local
 
     # Transport configuration
     mcp_transport: Literal["stdio", "streamable-http"] = "stdio"
@@ -29,11 +30,6 @@ class Settings(BaseSettings):
     embedding_model: str = "openai/text-embedding-3-large"
     embedding_dimensions: int = 3072
     log_path: str = "~/Library/Logs/running-coach-memory.log"
-
-    @property
-    def db_path(self) -> Path:
-        """Get expanded database path."""
-        return Path(self.database_path).expanduser()
 
     @property
     def log_file_path(self) -> Path:

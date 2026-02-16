@@ -15,6 +15,7 @@ from memory_mcp.models import (
     PlanUpdate,
 )
 from memory_mcp.tools import memory as memory_tools
+from memory_mcp.tools import memory_md as memory_md_tools
 from memory_mcp.tools import plan as plan_tools
 from memory_mcp.tools import status as status_tools
 
@@ -154,6 +155,44 @@ def delete_memory(memory_id: int) -> bool:
     conn = get_connection(settings)
     try:
         return memory_tools.delete_memory(conn, memory_id)
+    finally:
+        conn.close()
+
+
+# =============================================================================
+# Memory MD Tools
+# =============================================================================
+
+
+@mcp.tool()
+def get_memory_md() -> str:
+    """Get the full MEMORY.md content from the database.
+
+    MEMORY.md is the athlete's persistent profile document — a structured
+    markdown file containing biographical data, training philosophy, goals,
+    injury history, and other long-term reference information.
+    """
+    conn = get_connection(settings)
+    try:
+        return memory_md_tools.get_memory_md(conn)
+    finally:
+        conn.close()
+
+
+@mcp.tool()
+def update_memory_md(content: str) -> str:
+    """Replace the full MEMORY.md content in the database.
+
+    Use when the athlete's profile needs updating — new goals, revised PRs,
+    injury updates, or any structural change to the document.
+    Always get_memory_md() first, modify the content, then update.
+
+    Args:
+        content: The complete new MEMORY.md content (replaces existing)
+    """
+    conn = get_connection(settings)
+    try:
+        return memory_md_tools.update_memory_md(conn, content)
     finally:
         conn.close()
 

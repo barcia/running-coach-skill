@@ -1,7 +1,5 @@
 """OpenRouter client for embeddings."""
 
-import struct
-
 from openai import OpenAI, APIError, APIConnectionError, RateLimitError
 
 from memory_mcp.config import Settings
@@ -60,8 +58,3 @@ class EmbeddingError(Exception):
     """Custom exception for embedding-related errors."""
 
     pass
-
-
-def serialize_embedding(embedding: list[float]) -> bytes:
-    """Serialize embedding to bytes for sqlite-vec."""
-    return struct.pack(f"{len(embedding)}f", *embedding)

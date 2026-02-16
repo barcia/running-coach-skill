@@ -24,7 +24,8 @@ def mock_settings(temp_db_path: str) -> Settings:
     """Create settings with temp database."""
     return Settings(
         openrouter_api_key="test-key",
-        database_path=temp_db_path,
+        turso_database_url=temp_db_path,
+        turso_auth_token="",
         embedding_model="openai/text-embedding-3-large",
         embedding_dimensions=3072,
     )

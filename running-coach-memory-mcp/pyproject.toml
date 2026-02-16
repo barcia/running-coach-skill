@@ -8,7 +8,7 @@ dependencies = [
     "mcp[cli]>=1.0.0",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
-    "sqlite-vec>=0.1.0",
+    "libsql>=0.1.0",
     "openai>=1.0.0",
     "uvicorn>=0.34.0",
 ]
