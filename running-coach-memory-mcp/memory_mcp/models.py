@@ -1,6 +1,6 @@
 """Pydantic models for Running Coach Memory MCP."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -12,6 +12,13 @@ def validate_date_format(value: str) -> str:
         datetime.strptime(value, "%Y-%m-%d")
     except ValueError:
         raise ValueError("Date must be in YYYY-MM-DD format and be a valid date")
+    return value
+
+
+def ensure_utc(value: datetime) -> datetime:
+    """Ensure datetime is timezone-aware (UTC). SQLite may store naive timestamps."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
     return value
 
 
@@ -34,6 +41,11 @@ class Memory(MemoryBase):
 
     id: int
     created_at: datetime
+
+    @field_validator("created_at")
+    @classmethod
+    def validate_created_at(cls, v: datetime) -> datetime:
+        return ensure_utc(v)
 
 
 class MemorySearchResult(Memory):
@@ -86,6 +98,11 @@ class Plan(PlanBase):
     created_at: datetime
     status: str
     activity_id: str | None = None
+
+    @field_validator("created_at")
+    @classmethod
+    def validate_created_at(cls, v: datetime) -> datetime:
+        return ensure_utc(v)
 
 
 # Status Models
