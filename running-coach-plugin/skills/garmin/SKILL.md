@@ -1,11 +1,6 @@
 ---
 name: garmin
 description: Crear y subir workouts (carreras simples, intervalos) y datos de composicion corporal a Garmin Connect. Usar para crear entrenamientos estructurados, programarlos en calendario, subir mediciones de peso/grasa desde bascula Eufy o manualmente.
-allowed-tools:
-  - Bash
-  - Read
-  - Write
-  - mcp: garmin_mcp
 ---
 
 # Garmin Skill
