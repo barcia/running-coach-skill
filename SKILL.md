@@ -10,7 +10,7 @@ description: |-
 license: MIT
 metadata:
   author: ivan
-  version: 1.2.1
+  version: 1.2.2
   category: health
 ---
 
@@ -58,7 +58,7 @@ Base de datos SQLite accesible vía MCP con dos tablas:
 - `activity_id`: Vinculación con Garmin (si disponible, a rellenar cuando analices entrenos pasados)
 
 Acceso: SQL directo o búsqueda vectorial (RAG).
-Función rápida: `get_athlete_status()` → últimos 5 planes, próximos 5, últimas 20 memorias.
+Las herramientas de listado y búsqueda devuelven **CSV** (cabecera + filas) para eficiencia de tokens.
 
 ### Garmin MCP — Métricas externas
 
@@ -84,12 +84,14 @@ Al comenzar **cualquier** interacción, ejecuta estos 3 pasos:
    - `~/.ATHLETE.md`
    - Si no existe → ejecutar onboarding (ver `references/onboarding.md`)
 
-2. **Cargar tools MCP** — Usar `ToolSearch` con `select:mcp__Running_Coach_Memory__get_athlete_status` para cargar la tool principal. Cargar otras tools del MCP bajo demanda con `select:mcp__Running_Coach_Memory__<nombre>`.
+2. **Cargar tools MCP** — Usar `ToolSearch` con `+Running_Coach_Memory list` para cargar las tools de listado. Cargar otras tools del MCP bajo demanda con `select:mcp__Running_Coach_Memory__<nombre>`.
 
-3. **Obtener estado actual** — `mcp__Running_Coach_Memory__get_athlete_status` (ya cargada en paso 2).
+3. **Obtener estado actual** — Lanzar **subagents en paralelo**:
+   - `mcp__Running_Coach_Memory__list_plans(start_date=<hoy - 14 días>, end_date=<hoy + 14 días>)` — planes recientes y próximos
+   - `mcp__Running_Coach_Memory__list_memories(limit=20)` — últimas 20 memorias
    Si necesitas más contexto para la tarea, usa las herramientas disponibles.
 
-4. **Datos Garmin** (si disponible):
+4. **Datos Garmin** (si disponible) Lanzar **subagents en paralelo**:
    - `mcp__Garmin_MCP__get_activities` — Actividades recientes
    - `mcp__Garmin_MCP__get_training_status` — VO2max, carga, estado de forma
    - `mcp__Garmin_MCP__get_hrv_data` — Tendencia de recuperación
@@ -106,7 +108,7 @@ su flujo de resolución completo — no hay secciones separadas de workflows.
 ### Analizar estado
 **Triggers:** cómo voy, mi fitness, estado, revisar semana, carga, recuperación
 
-1. `get_athlete_status()` → Devuelve los 5 planes anteriores, los 5 siguientes y los últimos 20 registros de memory
+1. `list_plans()` + `list_memories(limit=20)` → Planes recientes/próximos y últimas 20 memorias
 2. Si Garmin: `get_training_status()` + `get_hrv_data()` → VO2max, carga, recuperación
 3. `search_memories(query="tendencias últimas semanas")` → contexto histórico
 4. Consultar `references/methodology.md` §4-§5 para interpretar carga y recuperación
@@ -116,7 +118,7 @@ su flujo de resolución completo — no hay secciones separadas de workflows.
 ### Crear plan
 **Triggers:** plan, planificar, entrenos, preparar, próxima semana, macrociclo
 
-1. Contexto: ATHLETE.md (objetivo, nivel, disponibilidad) + `get_athlete_status()` + Garmin
+1. Contexto: ATHLETE.md (objetivo, nivel, disponibilidad) + `list_plans()` + `list_memories()` + Garmin
 2. Clarificar: horizonte temporal, objetivo específico, restricciones
 3. Consultar `references/methodology.md` — periodización, volumen, intensidad, trail, nutrición, taper
 4. Diseñar plan (cualquier horizonte temporal):
@@ -167,11 +169,11 @@ su flujo de resolución completo — no hay secciones separadas de workflows.
 
 Herramienta principal de persistencia. Dos vías de acceso: SQL directo y búsqueda vectorial.
 
-**IMPORTANTE — Tools deferred:** Las tools de este MCP son deferred y deben cargarse con `ToolSearch` antes de usarlas. El prefijo completo es `mcp__Running_Coach_Memory__`. Para cargarlas, usar `select:` con el nombre exacto (ej: `select:mcp__Running_Coach_Memory__get_athlete_status`).
+**IMPORTANTE — Tools deferred:** Las tools de este MCP son deferred y deben cargarse con `ToolSearch` antes de usarlas. El prefijo completo es `mcp__Running_Coach_Memory__`. Para cargarlas, usar `+Running_Coach_Memory <keyword>` o `select:` con el nombre exacto.
 
 **Inicialización rápida:**
-`mcp__Running_Coach_Memory__get_athlete_status` → últimos 5 planes + próximos 5 + últimas 20 memorias.
-Usar siempre al inicio de sesión (ver sección 2).
+Lanzar en paralelo `list_plans(start_date=..., end_date=...)` + `list_memories(limit=20)`.
+Usar siempre al inicio de sesión (ver sección 2). Las respuestas vienen en formato CSV.
 
 **Plans** — Ciclo de vida de entrenamientos:
 
