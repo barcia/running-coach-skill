@@ -10,7 +10,7 @@ description: |-
 license: MIT
 metadata:
   author: ivan
-  version: 1.2.0
+  version: 1.2.1
   category: health
 ---
 
@@ -84,13 +84,17 @@ Al comenzar **cualquier** interacción, ejecuta estos 3 pasos:
    - `~/.ATHLETE.md`
    - Si no existe → ejecutar onboarding (ver `references/onboarding.md`)
 
-2. **Obtener estado actual** — `get_athlete_status()` vía running-coach-memory MCP.
+2. **Cargar tools MCP** — Usar `ToolSearch` con `select:mcp__Running_Coach_Memory__get_athlete_status` para cargar la tool principal. Cargar otras tools del MCP bajo demanda con `select:mcp__Running_Coach_Memory__<nombre>`.
+
+3. **Obtener estado actual** — `mcp__Running_Coach_Memory__get_athlete_status` (ya cargada en paso 2).
    Si necesitas más contexto para la tarea, usa las herramientas disponibles.
 
-3. **Datos Garmin** (si disponible):
-   - `get_activities(limit=5)` — Actividades recientes
-   - `get_training_status()` — VO2max, carga, estado de forma
-   - `get_hrv_data()` — Tendencia de recuperación
+4. **Datos Garmin** (si disponible):
+   - `mcp__Garmin_MCP__get_activities` — Actividades recientes
+   - `mcp__Garmin_MCP__get_training_status` — VO2max, carga, estado de forma
+   - `mcp__Garmin_MCP__get_hrv_data` — Tendencia de recuperación
+   - `mcp__Garmin_MCP__get_training_readiness` — Score integrado de preparación para entrenar (sueño + recuperación + carga + HRV + estrés)
+   - `mcp__Garmin_MCP__get_sleep_summary` — Resumen compacto de sueño (duración, fases, score, estrés nocturno)
 
 ---
 
@@ -163,38 +167,51 @@ su flujo de resolución completo — no hay secciones separadas de workflows.
 
 Herramienta principal de persistencia. Dos vías de acceso: SQL directo y búsqueda vectorial.
 
+**IMPORTANTE — Tools deferred:** Las tools de este MCP son deferred y deben cargarse con `ToolSearch` antes de usarlas. El prefijo completo es `mcp__Running_Coach_Memory__`. Para cargarlas, usar `select:` con el nombre exacto (ej: `select:mcp__Running_Coach_Memory__get_athlete_status`).
+
 **Inicialización rápida:**
-`get_athlete_status()` → últimos 5 planes + próximos 5 + últimas 20 memorias.
+`mcp__Running_Coach_Memory__get_athlete_status` → últimos 5 planes + próximos 5 + últimas 20 memorias.
 Usar siempre al inicio de sesión (ver sección 2).
 
 **Plans** — Ciclo de vida de entrenamientos:
 
-| Herramienta                                      | Uso                 |
-| ------------------------------------------------ | ------------------- |
-| `add_plan(planned_at, description, notes?)`      | Crear sesión        |
-| `get_plan(plan_id)`                              | Obtener plan por ID |
-| `get_today_plan()`                               | Plan de hoy         |
-| `get_upcoming_plans()`                           | Próximos planes     |
-| `list_plans(start_date, end_date, status)`       | Buscar con filtros  |
-| `update_plan(plan_id, status, activity_id, ...)` | Cerrar bucle        |
-| `delete_plan(plan_id)`                           | Eliminar            |
+| Tool completa                                          | Uso                 |
+| ------------------------------------------------------ | ------------------- |
+| `mcp__Running_Coach_Memory__add_plan`                  | Crear sesión        |
+| `mcp__Running_Coach_Memory__get_plan`                  | Obtener plan por ID |
+| `mcp__Running_Coach_Memory__get_today_plan`            | Plan de hoy         |
+| `mcp__Running_Coach_Memory__get_upcoming_plans`        | Próximos planes     |
+| `mcp__Running_Coach_Memory__list_plans`                | Buscar con filtros  |
+| `mcp__Running_Coach_Memory__update_plan`               | Cerrar bucle        |
+| `mcp__Running_Coach_Memory__delete_plan`               | Eliminar            |
 
 Estados: `pending` → `completed` | `skipped` | `cancelled`.
 Solo marcar `completed` con evidencia real. Al completar, vincular siempre el `activity_id`.
 
+**Reglas de gestión de planes:**
+
+- **Mover/reprogramar** → `update_plan(plan_id, planned_at="nueva-fecha")`. NUNCA cancelar + crear nuevo. El plan es el mismo, solo cambia la fecha. Actualizar `notes` con el motivo del cambio si es relevante.
+- **Modificar contenido** → `update_plan(plan_id, description="...", notes="...")`. Si cambia el tipo de sesión pero la fecha es la misma, actualizar el plan existente.
+- **Completar** → `update_plan(plan_id, status="completed", activity_id="...", notes="...")`. Solo con evidencia real de Garmin.
+- **Skipped** → El atleta no hizo la sesión (por el motivo que sea). Registrar motivo en `notes`.
+- **Cancelled** → Usar esto solo si se cancela por decisión de coaching (ej: replanning completo del macrociclo, cambio de objetivos). NO usar para mover sesiones de fecha.
+- **`delete_plan`** → Solo para errores de entrada (plan duplicado, dato incorrecto). No usar como alternativa a cancelled/skipped. También es válido para descartar un bloque entero y no llenar la BBDD de un montón de planes `cancelled`
+
 **Memory** — Memoria semántica:
 
-| Herramienta | Uso |
-|-------------|-----|
-| `add_memory(author, content)` | Guardar insight (genera embedding automáticamente) |
-| `get_memory(memory_id)` | Obtener memoria por ID |
-| `search_memories(query, limit)` | Búsqueda vectorial por similitud |
-| `list_memories(author, limit)` | Listado cronológico |
-| `delete_memory(memory_id)` | Eliminar |
+| Tool completa                                          | Uso |
+|--------------------------------------------------------|-----|
+| `mcp__Running_Coach_Memory__add_memory`                | Guardar insight (genera embedding automáticamente) |
+| `mcp__Running_Coach_Memory__get_memory`                | Obtener memoria por ID |
+| `mcp__Running_Coach_Memory__search_memories`           | Búsqueda vectorial por similitud |
+| `mcp__Running_Coach_Memory__list_memories`             | Listado cronológico |
+| `mcp__Running_Coach_Memory__delete_memory`             | Eliminar |
 
 Autores: `user` (lo que dijo el atleta), `agent` (tus observaciones), `system` (automático).
 Busca antes de preguntar — usa `search_memories` proactivamente antes de pedir información.
 Las memorias antiguas pierden relevancia: evalúa vigencia según fecha de creación.
+
+Para añadir una nueva memoria, lanza siempre que sea posible un background agent con la información que quieres añadir, así evitamos que blouquee el thread principal.
 
 ### Exportación de planes
 
